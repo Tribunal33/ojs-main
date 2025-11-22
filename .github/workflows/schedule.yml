@@ -1,137 +1,236 @@
 on:
   schedule:
-    - cron: '5 5 * * *'
+    - cron: "5 5 * * *"
   workflow_dispatch:
+    inputs:
+      job:
+        description: "Which OJS workflow job to run?"
+        required: true
+        type: choice
+        options:
+          - ojs-main
+          - ojs-stable-3_5_0
+          - ojs-stable-3_4_0
+          - ojs-stable-3_3_0
+      database:
+        description: "Select database"
+        required: true
+        type: choice
+        options:
+          - mysql
+          - pgsql
+          - mariadb
 
 name: schedule
+
 jobs:
+  # Shared logging job (always runs first)
+  log-selection:
+    runs-on: ubuntu-latest
+    outputs:
+      job: ${{ steps.export.outputs.job }}
+      database: ${{ steps.export.outputs.database }}
+    steps:
+      - name: 🔍 Echo inputs
+        run: |
+          echo "🔍 Selected job: ${{ inputs.job }}"
+          echo "🔍 Selected database: ${{ inputs.database }}"
+      - id: export
+        run: |
+          echo "job=${{ inputs.job }}" >> $GITHUB_OUTPUT
+          echo "database=${{ inputs.database }}" >> $GITHUB_OUTPUT
+
+  # -------------------------
+  # Generic job template macro
+  # (jobs below only plug in matrix + dataset branch)
+  # -------------------------
+
   ojs-main:
-    if: github.repository == 'pkp/ojs'
+    needs: log-selection
+    if: |
+      github.repository == 'pkp/ojs' &&
+      (github.event_name == 'schedule' || needs.log-selection.outputs.job == 'ojs-main')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
           - php-version: 8.2
-            validate: 'validate'
+            validate: validate
             database: pgsql
-            test: 'test'
-            SAVE_BUILD: 'save_build'
-            upgrade: 'upgrade'
-            upgrade_test: 'stable-3_3_0,stable-3_4_0,stable-3_5_0'
+            dataset_branch: main
+            upgrade_test: stable-3_3_0,stable-3_4_0,stable-3_5_0
           - php-version: 8.2
-            validate: 'validate'
+            validate: validate
             database: mariadb
-            test: 'test'
-            SAVE_BUILD: 'save_build'
-            upgrade: 'upgrade'
-            upgrade_test: 'stable-3_4_0,stable-3_5_0'
+            dataset_branch: main
+            upgrade_test: stable-3_4_0,stable-3_5_0
           - php-version: 8.2
-            validate: 'validate'
+            validate: validate
             database: mysql
-            test: 'test'
-            SAVE_BUILD: 'save_build'
-            upgrade: 'upgrade'
-            upgrade_test: 'stable-3_3_0,stable-3_4_0,stable-3_5_0'
-    name: ojs-main
+            dataset_branch: main
+            upgrade_test: stable-3_3_0,stable-3_4_0,stable-3_5_0
     steps:
+      - name: ⏩ Skip if DB doesn't match selection
+        if: matrix.database != needs.log-selection.outputs.database
+        run: |
+          echo "❌ Skipping matrix entry because:"
+          echo "   • Selected database:   ${{ needs.log-selection.outputs.database }}"
+          echo "   • Matrix database:     ${{ matrix.database }}"
+          exit 0
+
+      - name: 🧪 Run selected matrix entry
+        if: matrix.database == needs.log-selection.outputs.database
+        run: |
+          echo "🧪 Running OJS job: ojs-main"
+          echo "   • PHP version:   ${{ matrix['php-version'] }}"
+          echo "   • Database:      ${{ matrix.database }}"
+          echo "   • Dataset:       ${{ matrix.dataset_branch }}"
+          echo "   • Upgrade tests: ${{ matrix.upgrade_test }}"
+
       - uses: pkp/pkp-github-actions@v1
+        if: matrix.database == needs.log-selection.outputs.database
         with:
           node_version: 20
-          dataset_branch: 'main'
-          DATASETS_ACCESS_KEY:  ${{secrets.DATASETS_ACCESS_KEY}}
+          dataset_branch: ${{ matrix.dataset_branch }}
+          DATASETS_ACCESS_KEY: ${{ secrets.DATASETS_ACCESS_KEY }}
           DEBUG_IN_TMATE: false
 
+  # -------------------------
+  # STABLE 3.5.0
+  # -------------------------
   ojs-stable-3_5_0:
-    if: github.repository == 'pkp/ojs'
+    needs: log-selection
+    if: |
+      github.repository == 'pkp/ojs' &&
+      (github.event_name == 'schedule' || needs.log-selection.outputs.job == 'ojs-stable-3_5_0')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
           - php-version: 8.2
-            validate: 'validate'
             database: pgsql
-            test: 'test'
-            SAVE_BUILD: 'save_build'
-            upgrade: 'upgrade'
-            upgrade_test: 'stable-3_3_0,stable-3_4_0'
+            dataset_branch: stable-3_5_0
+            upgrade_test: stable-3_3_0,stable-3_4_0
           - php-version: 8.2
             database: mariadb
-            test: 'test'
-            SAVE_BUILD: 'save_build'
-            upgrade: 'upgrade'
-            upgrade_test: 'stable-3_4_0'
+            dataset_branch: stable-3_5_0
+            upgrade_test: stable-3_4_0
           - php-version: 8.2
             database: mysql
-            test: 'test'
-            SAVE_BUILD: 'save_build'
-            upgrade: 'upgrade'
-            upgrade_test: 'stable-3_3_0,stable-3_4_0'
-    name: ojs-stable-3_5_0
+            dataset_branch: stable-3_5_0
+            upgrade_test: stable-3_3_0,stable-3_4_0
     steps:
+      - name: ⏩ Skip if DB doesn't match selection
+        if: matrix.database != needs.log-selection.outputs.database
+        run: |
+          echo "❌ Skipping matrix entry. DB mismatch."
+          exit 0
+
+      - name: 🧪 Run selected matrix entry
+        if: matrix.database == needs.log-selection.outputs.database
+        run: |
+          echo "🧪 Running ojs-stable-3_5_0"
+          echo "   • PHP version:   ${{ matrix['php-version'] }}"
+          echo "   • Database:      ${{ matrix.database }}"
+          echo "   • Dataset:       ${{ matrix.dataset_branch }}"
+          echo "   • Upgrade tests: ${{ matrix.upgrade_test }}"
+
       - uses: pkp/pkp-github-actions@v1
+        if: matrix.database == needs.log-selection.outputs.database
         with:
           node_version: 20
-          dataset_branch: 'stable-3_5_0'
-          DATASETS_ACCESS_KEY: ${{secrets.DATASETS_ACCESS_KEY}}
+          dataset_branch: ${{ matrix.dataset_branch }}
+          DATASETS_ACCESS_KEY: ${{ secrets.DATASETS_ACCESS_KEY }}
           DEBUG_IN_TMATE: false
 
+  # -------------------------
+  # STABLE 3.4.0
+  # -------------------------
   ojs-stable-3_4_0:
-    if: github.repository == 'pkp/ojs'
+    needs: log-selection
+    if: |
+      github.repository == 'pkp/ojs' &&
+      (github.event_name == 'schedule' || needs.log-selection.outputs.job == 'ojs-stable-3_4_0')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
           - php-version: 8.1
-            validate: 'validate'
             database: pgsql
-            test: 'test'
-            SAVE_BUILD: 'save_build'
-            upgrade: 'upgrade'
-            upgrade_test: '3.1.0,stable-3_2_0,stable-3_2_1,stable-3_3_0'
+            dataset_branch: stable-3_4_0
+            upgrade_test: 3.1.0,stable-3_2_0,stable-3_2_1,stable-3_3_0
           - php-version: 8.1
             database: mariadb
-            test: 'test'
-            SAVE_BUILD: 'save_build'
+            dataset_branch: stable-3_4_0
           - php-version: 8.1
-            validate: 'validate'
             database: mysql
-            test: 'test'
-            SAVE_BUILD: 'save_build'
-            upgrade: 'upgrade'
-            upgrade_test: '3.1.0,3.1.1-2,3.1.2,stable-3_2_0,stable-3_2_1,stable-3_3_0'
-    name: ojs-stable-3_4_0
+            dataset_branch: stable-3_4_0
+            upgrade_test: 3.1.0,3.1.1-2,3.1.2,stable-3_2_0,stable-3_2_1,stable-3_3_0
     steps:
+      - name: ⏩ Skip if DB doesn't match selection
+        if: matrix.database != needs.log-selection.outputs.database
+        run: |
+          echo "❌ Skipping matrix entry. DB mismatch."
+          exit 0
+
+      - name: 🧪 Run selected matrix entry
+        if: matrix.database == needs.log-selection.outputs.database
+        run: |
+          echo "🧪 Running ojs-stable-3_4_0"
+          echo "   • PHP version:   ${{ matrix['php-version'] }}"
+          echo "   • Database:      ${{ matrix.database }}"
+          echo "   • Dataset:       ${{ matrix.dataset_branch }}"
+          echo "   • Upgrade tests: ${{ matrix.upgrade_test }}"
+
       - uses: pkp/pkp-github-actions@v1
+        if: matrix.database == needs.log-selection.outputs.database
         with:
           node_version: 16
-          dataset_branch: 'stable-3_4_0'
-          DATASETS_ACCESS_KEY: ${{secrets.DATASETS_ACCESS_KEY}}
+          dataset_branch: ${{ matrix.dataset_branch }}
+          DATASETS_ACCESS_KEY: ${{ secrets.DATASETS_ACCESS_KEY }}
           DEBUG_IN_TMATE: false
 
+  # -------------------------
+  # STABLE 3.3.0
+  # -------------------------
   ojs-stable-3_3_0:
-    if: github.repository == 'pkp/ojs'
+    needs: log-selection
+    if: |
+      github.repository == 'pkp/ojs' &&
+      (github.event_name == 'schedule' || needs.log-selection.outputs.job == 'ojs-stable-3_3_0')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
           - php-version: 7.4
-            validate: 'validate'
             database: pgsql
-            test: 'test'
-            SAVE_BUILD: 'save_build'
+            dataset_branch: stable-3_3_0
           - php-version: 7.4
             database: mysql
-            test: 'test'
-            SAVE_BUILD: 'save_build'
-    name: ojs-stable-3_3_0
+            dataset_branch: stable-3_3_0
     steps:
+      - name: ⏩ Skip if DB doesn't match selection
+        if: matrix.database != needs.log-selection.outputs.database
+        run: |
+          echo "❌ Skipping matrix entry. DB mismatch."
+          exit 0
+
+      - name: 🧪 Run selected matrix entry
+        if: matrix.database == needs.log-selection.outputs.database
+        run: |
+          echo "🧪 Running ojs-stable-3_3_0"
+          echo "   • PHP version:   ${{ matrix['php-version'] }}"
+          echo "   • Database:      ${{ matrix.database }}"
+          echo "   • Dataset:       ${{ matrix.dataset_branch }}"
+
       - uses: pkp/pkp-github-actions@v1
+        if: matrix.database == needs.log-selection.outputs.database
         with:
           node_version: 12
-          dataset_branch: 'stable-3_3_0'
-          DATASETS_ACCESS_KEY: ${{secrets.DATASETS_ACCESS_KEY}}
+          dataset_branch: ${{ matrix.dataset_branch }}
+          DATASETS_ACCESS_KEY: ${{ secrets.DATASETS_ACCESS_KEY }}
           DEBUG_IN_TMATE: false
