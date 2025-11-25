@@ -31,10 +31,10 @@ jobs:
       job: ${{ steps.export.outputs.job }}
       database: ${{ steps.export.outputs.database }}
     steps:
-      - name: 🔍 Echo inputs
+      - name: Echo inputs
         run: |
-          echo "🔍 Selected job: ${{ inputs.job }}"
-          echo "🔍 Selected database: ${{ inputs.database }}"
+          echo "Selected job: ${{ inputs.job }}"
+          echo "Selected database: ${{ inputs.database }}"
       - id: export
         run: |
           echo "job=${{ inputs.job }}" >> $GITHUB_OUTPUT
@@ -71,18 +71,18 @@ jobs:
             dataset_branch: main
             upgrade_test: stable-3_3_0,stable-3_4_0,stable-3_5_0
     steps:
-      - name: ⏩ Skip if DB doesn't match selection
+      - name: Skip if DB doesn't match selection
         if: matrix.database != needs.log-selection.outputs.database
         run: |
-          echo "❌ Skipping matrix entry because:"
+          echo "Skipping matrix entry because:"
           echo "   • Selected database:   ${{ needs.log-selection.outputs.database }}"
           echo "   • Matrix database:     ${{ matrix.database }}"
           exit 0
 
-      - name: 🧪 Run selected matrix entry
+      - name: Run selected matrix entry
         if: matrix.database == needs.log-selection.outputs.database
         run: |
-          echo "🧪 Running OJS job: ojs-main"
+          echo "Running OJS job: ojs-main"
           echo "   • PHP version:   ${{ matrix['php-version'] }}"
           echo "   • Database:      ${{ matrix.database }}"
           echo "   • Dataset:       ${{ matrix.dataset_branch }}"
@@ -122,16 +122,16 @@ jobs:
             dataset_branch: stable-3_5_0
             upgrade_test: stable-3_3_0,stable-3_4_0
     steps:
-      - name: ⏩ Skip if DB doesn't match selection
+      - name: Skip if DB doesn't match selection
         if: matrix.database != needs.log-selection.outputs.database
         run: |
-          echo "❌ Skipping matrix entry. DB mismatch."
+          echo "Skipping matrix entry. DB mismatch."
           exit 0
 
-      - name: 🧪 Run selected matrix entry
+      - name: Run selected matrix entry
         if: matrix.database == needs.log-selection.outputs.database
         run: |
-          echo "🧪 Running ojs-stable-3_5_0"
+          echo "Running ojs-stable-3_5_0"
           echo "   • PHP version:   ${{ matrix['php-version'] }}"
           echo "   • Database:      ${{ matrix.database }}"
           echo "   • Dataset:       ${{ matrix.dataset_branch }}"
@@ -170,16 +170,16 @@ jobs:
             dataset_branch: stable-3_4_0
             upgrade_test: 3.1.0,3.1.1-2,3.1.2,stable-3_2_0,stable-3_2_1,stable-3_3_0
     steps:
-      - name: ⏩ Skip if DB doesn't match selection
+      - name: Skip if DB doesn't match selection
         if: matrix.database != needs.log-selection.outputs.database
         run: |
-          echo "❌ Skipping matrix entry. DB mismatch."
+          echo "Skipping matrix entry. DB mismatch."
           exit 0
 
-      - name: 🧪 Run selected matrix entry
+      - name: Run selected matrix entry
         if: matrix.database == needs.log-selection.outputs.database
         run: |
-          echo "🧪 Running ojs-stable-3_4_0"
+          echo "Running ojs-stable-3_4_0"
           echo "   • PHP version:   ${{ matrix['php-version'] }}"
           echo "   • Database:      ${{ matrix.database }}"
           echo "   • Dataset:       ${{ matrix.dataset_branch }}"
@@ -213,16 +213,16 @@ jobs:
             database: mysql
             dataset_branch: stable-3_3_0
     steps:
-      - name: ⏩ Skip if DB doesn't match selection
+      - name: Skip if DB doesn't match selection
         if: matrix.database != needs.log-selection.outputs.database
         run: |
-          echo "❌ Skipping matrix entry. DB mismatch."
+          echo "Skipping matrix entry. DB mismatch."
           exit 0
 
-      - name: 🧪 Run selected matrix entry
+      - name: Run selected matrix entry
         if: matrix.database == needs.log-selection.outputs.database
         run: |
-          echo "🧪 Running ojs-stable-3_3_0"
+          echo "Running ojs-stable-3_3_0"
           echo "   • PHP version:   ${{ matrix['php-version'] }}"
           echo "   • Database:      ${{ matrix.database }}"
           echo "   • Dataset:       ${{ matrix.dataset_branch }}"
